@@ -1,6 +1,6 @@
-# Replit Auth — OpenAPI Spec Additions
+# OpenRouter Integration — OpenAPI Endpoints
 
-Add these entries to `lib/api-spec/openapi.yaml`. Paths are relative to the base server URL — **do not** include the `/api` prefix (the Orval config sets `baseUrl: "/api"`).
+Add these entries to `lib/api-spec/openapi.yaml`. All paths below are relative to the base server URL (`/api`).
 
 After editing the spec, run codegen:
 
@@ -13,8 +13,8 @@ pnpm --filter @workspace/api-spec run codegen
 Add under `tags`:
 
 ```yaml
-  - name: Auth
-    description: Browser and mobile authentication endpoints.
+  - name: openrouter
+    description: OpenRouter AI chat operations
 ```
 
 ## Paths
@@ -22,143 +22,121 @@ Add under `tags`:
 Add under `paths`:
 
 ```yaml
-  /auth/user:
+  /openrouter/conversations:
     get:
-      tags: [Auth]
-      operationId: getCurrentAuthUser
-      summary: Get the currently authenticated user
-      parameters:
-        - $ref: '#/components/parameters/AuthorizationSessionHeader'
-        - $ref: '#/components/parameters/SessionCookie'
+      operationId: listOpenrouterConversations
+      tags: [openrouter]
+      summary: List all conversations
       responses:
-        '200':
-          description: Auth status resolved successfully.
+        "200":
+          description: List of conversations
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthUserEnvelope'
-  /login:
-    get:
-      tags: [Auth]
-      operationId: beginBrowserLogin
-      summary: Start the browser OIDC login flow
-      parameters:
-        - name: returnTo
-          in: query
-          required: false
-          description: Relative path to redirect to after login (must start with `/`). Defaults to `/`.
-          schema:
-            type: string
-      responses:
-        '302':
-          description: Redirect to the OIDC authorization endpoint.
-  /callback:
-    get:
-      tags: [Auth]
-      operationId: handleBrowserLoginCallback
-      summary: Complete the browser OIDC login flow
-      parameters:
-        - name: code
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: state
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: iss
-          in: query
-          required: false
-          schema:
-            type: string
-            format: uri
-      responses:
-        '302':
-          description: Redirect to the `returnTo` path on success (defaults to `/`) or `/api/login` on failure.
-  /logout:
-    get:
-      tags: [Auth]
-      operationId: logoutBrowserSession
-      summary: Clear the session and begin OIDC logout
-      parameters:
-        - $ref: '#/components/parameters/AuthorizationSessionHeader'
-        - $ref: '#/components/parameters/SessionCookie'
-      responses:
-        '302':
-          description: Redirect to the OIDC provider logout URL.
-  /mobile-auth/token-exchange:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OpenrouterConversation"
     post:
-      tags: [Auth]
-      operationId: exchangeMobileAuthorizationCode
-      summary: Exchange a mobile OIDC code for a session token
+      operationId: createOpenrouterConversation
+      tags: [openrouter]
+      summary: Create a new conversation
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MobileTokenExchangeRequest'
+              $ref: "#/components/schemas/CreateOpenrouterConversationBody"
       responses:
-        '200':
-          description: Session created successfully.
+        "201":
+          description: Created conversation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MobileTokenExchangeSuccess'
-        '400':
-          description: Missing or invalid required fields.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '401':
-          description: Token did not contain usable claims.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '500':
-          description: Token exchange failed.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-  /mobile-auth/logout:
-    post:
-      tags: [Auth]
-      operationId: logoutMobileSession
-      summary: Delete a mobile session token
+                $ref: "#/components/schemas/OpenrouterConversation"
+  /openrouter/conversations/{id}:
+    get:
+      operationId: getOpenrouterConversation
+      tags: [openrouter]
+      summary: Get conversation with messages
       parameters:
-        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
       responses:
-        '200':
-          description: Logout processed.
+        "200":
+          description: Conversation with messages
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LogoutSuccess'
-```
-
-## Parameters
-
-Add under `components.parameters`:
-
-```yaml
-    AuthorizationSessionHeader:
-      name: Authorization
-      in: header
-      required: false
-      description: Opaque session token — `Bearer <sid>`.
-      schema:
-        type: string
-    SessionCookie:
-      name: sid
-      in: cookie
-      required: false
-      description: Browser session cookie.
-      schema:
-        type: string
+                $ref: "#/components/schemas/OpenrouterConversationWithMessages"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenrouterError"
+    delete:
+      operationId: deleteOpenrouterConversation
+      tags: [openrouter]
+      summary: Delete a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenrouterError"
+  /openrouter/conversations/{id}/messages:
+    get:
+      operationId: listOpenrouterMessages
+      tags: [openrouter]
+      summary: List messages in a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OpenrouterMessage"
+    post:
+      operationId: sendOpenrouterMessage
+      tags: [openrouter]
+      summary: Send a message and receive an AI response (SSE stream)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendOpenrouterMessageBody"
+      responses:
+        "200":
+          description: SSE stream of assistant response chunks
+          content:
+            text/event-stream: {}
 ```
 
 ## Schemas
@@ -166,73 +144,83 @@ Add under `components.parameters`:
 Add under `components.schemas`:
 
 ```yaml
-    AuthUser:
+    OpenrouterConversation:
       type: object
-      required: [id, email, firstName, lastName, profileImageUrl]
       properties:
         id:
+          type: integer
+        title:
           type: string
-        email:
-          type: [string, 'null']
-          format: email
-        firstName:
-          type: [string, 'null']
-        lastName:
-          type: [string, 'null']
-        profileImageUrl:
-          type: [string, 'null']
-    AuthUserEnvelope:
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - createdAt
+    OpenrouterMessage:
       type: object
-      required: [user]
       properties:
-        user:
-          oneOf:
-            - $ref: '#/components/schemas/AuthUser'
-            - type: 'null'
-    MobileTokenExchangeRequest:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        role:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - conversationId
+        - role
+        - content
+        - createdAt
+    CreateOpenrouterConversationBody:
       type: object
-      required: [code, code_verifier, redirect_uri, state]
       properties:
-        code:
+        title:
           type: string
-          minLength: 1
-        code_verifier:
-          type: string
-          minLength: 1
-        redirect_uri:
-          type: string
-          minLength: 1
-          format: uri
-        state:
-          type: string
-          minLength: 1
-        nonce:
-          type: string
-          minLength: 1
-    MobileTokenExchangeSuccess:
+      required:
+        - title
+    SendOpenrouterMessageBody:
       type: object
-      required: [token]
       properties:
-        token:
+        content:
           type: string
-    LogoutSuccess:
+      required:
+        - content
+    OpenrouterConversationWithMessages:
       type: object
-      required: [success]
       properties:
-        success:
-          type: boolean
-          const: true
-    ErrorEnvelope:
+        id:
+          type: integer
+        title:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/OpenrouterMessage"
+      required:
+        - id
+        - title
+        - createdAt
+        - messages
+    OpenrouterError:
       type: object
-      required: [error]
       properties:
         error:
           type: string
+      required:
+        - error
 ```
 
 ## Notes
 
-- The `GET /callback` endpoint is **not validated** with Zod on the server because the OIDC provider may include query parameters not expressed in the schema.
-- The `GET /auth/user` route should just reflect the auth state already loaded onto `req` by `authMiddleware`.
-- Redirect endpoints (`/login`, `/callback`, `/logout`) exist in the spec for documentation and type generation, but the server routes produce `302` redirects, not JSON bodies.
-- Do not use generated API client code for auth operations. For browser auth, use `@workspace/replit-auth-web`'s `useAuth()`.
+- The `sendOpenrouterMessage` endpoint returns an SSE stream (`text/event-stream`). Orval cannot generate a typed hook for SSE. Consume it manually with `fetch` + `ReadableStream` on the client (`EventSource` only supports GET and cannot send a request body).
+- The SSE stream sends `data: {"content": "..."}` chunks followed by a final `data: {"done": true}`.

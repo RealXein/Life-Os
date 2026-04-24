@@ -1,17 +1,18 @@
-import { Inngest } from "inngest";
-import { realtimeMiddleware } from "@inngest/realtime/middleware";
+import OpenAI from "openai";
 
-// Use development configuration when NODE_ENV is not "production"
-export const inngest = new Inngest(
-  process.env.NODE_ENV === "production"
-    ? {
-        id: "replit-agent-workflow",
-        name: "Replit Agent Workflow System",
-      }
-    : {
-        id: "mastra",
-        baseUrl: `http://localhost:${process.env.INNGEST_PORT ?? "3000"}`,
-        isDev: true,
-        middleware: [realtimeMiddleware()],
-      },
-);
+if (!process.env.AI_INTEGRATIONS_OPENROUTER_BASE_URL) {
+  throw new Error(
+    "AI_INTEGRATIONS_OPENROUTER_BASE_URL must be set. Did you forget to provision the OpenRouter AI integration?",
+  );
+}
+
+if (!process.env.AI_INTEGRATIONS_OPENROUTER_API_KEY) {
+  throw new Error(
+    "AI_INTEGRATIONS_OPENROUTER_API_KEY must be set. Did you forget to provision the OpenRouter AI integration?",
+  );
+}
+
+export const openrouter = new OpenAI({
+  baseURL: process.env.AI_INTEGRATIONS_OPENROUTER_BASE_URL,
+  apiKey: process.env.AI_INTEGRATIONS_OPENROUTER_API_KEY,
+});
