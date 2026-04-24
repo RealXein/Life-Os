@@ -1,18 +1,17 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { Inngest } from "inngest";
+import { realtimeMiddleware } from "@inngest/realtime/middleware";
 
-if (!process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL) {
-  throw new Error(
-    "AI_INTEGRATIONS_ANTHROPIC_BASE_URL must be set. Did you forget to provision the Anthropic AI integration?",
-  );
-}
-
-if (!process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY) {
-  throw new Error(
-    "AI_INTEGRATIONS_ANTHROPIC_API_KEY must be set. Did you forget to provision the Anthropic AI integration?",
-  );
-}
-
-export const anthropic = new Anthropic({
-  apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-});
+// Use development configuration when NODE_ENV is not "production"
+export const inngest = new Inngest(
+  process.env.NODE_ENV === "production"
+    ? {
+        id: "replit-agent-workflow",
+        name: "Replit Agent Workflow System",
+      }
+    : {
+        id: "mastra",
+        baseUrl: `http://localhost:${process.env.INNGEST_PORT ?? "3000"}`,
+        isDev: true,
+        middleware: [realtimeMiddleware()],
+      },
+);
